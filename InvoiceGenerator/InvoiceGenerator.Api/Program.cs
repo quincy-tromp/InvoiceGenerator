@@ -1,21 +1,13 @@
+using InvoiceGenerator.Api;
+using InvoiceGenerator.Api.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-
-builder.Services.AddSwaggerGen();
+builder.Services.AddApi();
+builder.Services.AddAppServices();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+app.UseApi();
 
 await app.RunAsync();

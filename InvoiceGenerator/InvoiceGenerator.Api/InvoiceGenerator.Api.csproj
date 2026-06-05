@@ -1,6 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <Content Include="Templates\InvoiceTemplate.hbs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="Handlebars.Net" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
