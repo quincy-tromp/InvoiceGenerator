@@ -12,10 +12,10 @@ public sealed class InvoicesController(
 
     [HttpPost("generate")]
     [ProducesResponseType<IActionResult>(StatusCodes.Status200OK)]
-    public IActionResult Generate()
+    public async Task<IResult> Generate()
     {
         var invoice = invoiceFactory.Create();
-        var html = pdfGenerator.Generate(invoice);
-        return Ok(html);
+        var pdfData = await pdfGenerator.GenerateAsync(invoice);
+        return Results.File(pdfData, "application/pdf", $"invoice-{invoice.Number}.pdf");
     }
 }

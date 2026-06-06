@@ -6,6 +6,7 @@
 	<ItemGroup>
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Handlebars.Net" Version="2.1.6" />
+		<PackageVersion Include="PuppeteerSharp" Version="25.1.0" />
 		<PackageVersion Include="SonarAnalyzer.CSharp" Version="10.27.0.140913" />
 		<PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.1" />
 	</ItemGroup>
