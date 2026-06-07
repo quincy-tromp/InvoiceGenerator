@@ -44,6 +44,8 @@ public static class DependencyInjection
         });
         services.AddSingleton<IJobQueue<InvoiceGenerationJob>, ChannelQueue>();
         services.AddSingleton<ConcurrentDictionary<Guid, InvoiceGenerationStatus>>();
+        services.AddHostedService<InvoiceGenerationService>();
+        
 
         AddHelperServices();
 

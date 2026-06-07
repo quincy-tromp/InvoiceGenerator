@@ -10,4 +10,9 @@ public sealed class ChannelQueue(Channel<InvoiceGenerationJob> channel) : IJobQu
     {
         await channel.Writer.WriteAsync(job, cancellationToken);
     }
+
+    public IAsyncEnumerable<InvoiceGenerationJob> DequeueAllAsync(CancellationToken cancellationToken = default)
+    {
+        return channel.Reader.ReadAllAsync(cancellationToken);
+    }
 }
