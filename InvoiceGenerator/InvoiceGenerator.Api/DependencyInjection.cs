@@ -1,5 +1,9 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
+using System.Threading.Channels;
 using HandlebarsDotNet;
+using InvoiceGenerator.Api.Contracts;
+using InvoiceGenerator.Api.Interfaces;
 using InvoiceGenerator.Api.Services;
 
 namespace InvoiceGenerator.Api;
@@ -29,8 +33,18 @@ public static class DependencyInjection
     public static IServiceCollection AddAppServices(this IServiceCollection services)
     {
         services.AddSingleton<InvoiceFactory>();
-        services.AddScoped<PdfGenerator>();
-        
+        services.AddSingleton<PdfGenerator>();
+        services.AddSingleton(_ =>
+        {
+            var channel = Channel.CreateBounded<InvoiceGenerationJob>(new BoundedChannelOptions(50)
+            {
+                FullMode = BoundedChannelFullMode.Wait
+            });
+            return channel;
+        });
+        services.AddSingleton<IJobQueue<InvoiceGenerationJob>, ChannelQueue>();
+        services.AddSingleton<ConcurrentDictionary<Guid, InvoiceGenerationStatus>>();
+
         AddHelperServices();
 
         return services;
