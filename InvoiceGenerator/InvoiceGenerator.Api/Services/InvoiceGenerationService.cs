@@ -1,13 +1,21 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.Mime;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using InvoiceGenerator.Api.Contracts;
 using InvoiceGenerator.Api.Interfaces;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace InvoiceGenerator.Api.Services;
 
 public sealed class InvoiceGenerationService(
     ILogger<InvoiceGenerationService> logger,
     IJobQueue<InvoiceGenerationJob> jobQueue,
-    ConcurrentDictionary<Guid, InvoiceGenerationStatus> statusDictionary) : BackgroundService
+    ConcurrentDictionary<Guid, InvoiceGenerationStatus> statusDictionary,
+    InvoiceFactory invoiceFactory,
+    PdfGenerator pdfGenerator,
+    IFileStorage storageService
+) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -34,10 +42,19 @@ public sealed class InvoiceGenerationService(
         {
             statusDictionary[job.Id] = InvoiceGenerationStatus.Processing;
 
-            // Simulate invoice generation time
-            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
+            var invoice = await invoiceFactory.CreateAsync(cancellationToken);
+
+            var invoicePdf = await pdfGenerator.GenerateAsync(invoice, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            var fileData = new FileData
+            {
+                FileName = invoice.GetFileName(),
+                Content = invoicePdf,
+                Type = MediaTypeNames.Application.Pdf
+            };
+            await storageService.UploadAsync(job.Id, fileData, cancellationToken);
 
             statusDictionary[job.Id] = InvoiceGenerationStatus.Completed;
         }

@@ -1,4 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.Mime;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using InvoiceGenerator.Api.Contracts;
 using InvoiceGenerator.Api.DTOs;
 using InvoiceGenerator.Api.Interfaces;
@@ -10,9 +13,8 @@ namespace InvoiceGenerator.Api.Controllers;
 [ApiController]
 [Route("invoices")]
 public sealed class InvoicesController(
-    InvoiceFactory invoiceFactory,
-    PdfGenerator pdfGenerator,
     IJobQueue<InvoiceGenerationJob> jobQueue,
+    IFileStorage storageService,
     ConcurrentDictionary<Guid, InvoiceGenerationStatus> statusDiectionary,
     LinkGenerator linkGenerator
     ) : ControllerBase
@@ -53,7 +55,6 @@ public sealed class InvoicesController(
         {
             Id = id,
             Status = status.ToString(),
-            Link = string.Empty
         };
 
         if (status == InvoiceGenerationStatus.Completed)
@@ -69,7 +70,7 @@ public sealed class InvoicesController(
     [ProducesResponseType<ActionResult<byte[]>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ActionResult>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ActionResult>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetInvoice(Guid id)
+    public async Task<IActionResult> GetInvoice(Guid id, CancellationToken cancellationToken = default)
     {
         if (!statusDiectionary.TryGetValue(id, out var status))
         {
@@ -81,9 +82,9 @@ public sealed class InvoicesController(
             return BadRequest("Invoice generation is not completed yet.");
         }
 
-        var invoice = invoiceFactory.Create();
-        var pdfData = await pdfGenerator.GenerateAsync(invoice);
-        return File(pdfData, "application/pdf", $"invoice-{invoice.Number}.pdf");
+        var fileData = await storageService.DownloadAsync(id, cancellationToken);
+
+        return File(fileData.Content, MediaTypeNames.Application.Pdf, fileData.FileName);
     }
 
     private string GetLink(string actionName, object values)
@@ -92,6 +93,6 @@ public sealed class InvoicesController(
             HttpContext,
             action: actionName,
             controller: "Invoices",
-            values) ?? throw new Exception("Failed to generate link");
+            values) ?? throw new Exception("Failed to generate link.");
     }
 }

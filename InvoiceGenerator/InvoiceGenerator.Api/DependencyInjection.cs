@@ -1,16 +1,20 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.Threading.Channels;
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using HandlebarsDotNet;
 using InvoiceGenerator.Api.Contracts;
 using InvoiceGenerator.Api.Interfaces;
+using InvoiceGenerator.Api.Middleware;
 using InvoiceGenerator.Api.Services;
+using Microsoft.Extensions.Azure;
 
 namespace InvoiceGenerator.Api;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApi(this IServiceCollection services)
+    public static IServiceCollection AddApiServices(this IServiceCollection services)
     {
         services.AddControllers();
         services.AddEndpointsApiExplorer();
@@ -18,19 +22,18 @@ public static class DependencyInjection
         return services;
     }
 
-    public static WebApplication UseApi(this WebApplication app)
+    public static WebApplication UseApiServices(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-        app.UseHttpsRedirection();
         app.MapControllers();
         return app;
     }
 
-    public static IServiceCollection AddAppServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddSingleton<InvoiceFactory>();
         services.AddSingleton<PdfGenerator>();
@@ -43,12 +46,44 @@ public static class DependencyInjection
             return channel;
         });
         services.AddSingleton<IJobQueue<InvoiceGenerationJob>, ChannelQueue>();
+        services.AddSingleton<IFileStorage, AzureBlobStorage>();
         services.AddSingleton<ConcurrentDictionary<Guid, InvoiceGenerationStatus>>();
         services.AddHostedService<InvoiceGenerationService>();
-        
+        services.AddAzureClients(clientBuilder =>
+        {
+            clientBuilder.AddClient<BlobContainerClient, BlobClientOptions>((options, sp) =>
+            {
+                var config = sp.GetRequiredService<IConfiguration>();
+
+                return new BlobContainerClient(
+                    new Uri(config["AzureBlobStorage:Uri"] 
+                        ?? throw new InvalidOperationException("Azure Blob Storage URI is not configured")),
+                    new DefaultAzureCredential(),
+                    options);
+            });
+        });
 
         AddHelperServices();
 
+        return services;
+    }
+
+    public static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
+    {
+        services.AddHostedService<InvoiceGenerationService>();
+        return services;
+    }
+
+    public static IServiceCollection AddErrorHandling(this IServiceCollection services)
+    {
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails(options =>
+        {
+            options.CustomizeProblemDetails = context =>
+            {
+                context.ProblemDetails.Extensions.TryAdd("traceId", context.HttpContext.TraceIdentifier);
+            };
+        });
         return services;
     }
 

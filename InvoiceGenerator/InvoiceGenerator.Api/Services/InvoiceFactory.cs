@@ -5,9 +5,12 @@ namespace InvoiceGenerator.Api.Services;
 
 public sealed class InvoiceFactory
 {
-    public Invoice Create()
+    public async Task<Invoice> CreateAsync(CancellationToken cancellationToken = default)
     {
         var faker = new Faker();
+
+        // Simulate invoice generation time
+        await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
 
         return new Invoice
         {

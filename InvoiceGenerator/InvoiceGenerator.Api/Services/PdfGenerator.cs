@@ -7,10 +7,10 @@ namespace InvoiceGenerator.Api.Services;
 
 public sealed class PdfGenerator()
 {
-    public async Task<byte[]> GenerateAsync(Invoice invoice)
+    public async Task<byte[]> GenerateAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
         var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "InvoiceTemplate.hbs");
-        var templateContent = await File.ReadAllTextAsync(templatePath);
+        var templateContent = await File.ReadAllTextAsync(templatePath, cancellationToken);
 
         var template = Handlebars.Compile(templateContent);
 
@@ -27,6 +27,8 @@ public sealed class PdfGenerator()
         };
 
         var html = template(data);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         var browserFetcher = new BrowserFetcher();
         await browserFetcher.DownloadAsync();

@@ -13,4 +13,6 @@ public sealed class Invoice
     public Address CustomerAddress { get; set; }
 
     public LineItem[] LineItems { get; set; } = [];
+
+    public string GetFileName() => $"invoice-{Number}.pdf";
 }
